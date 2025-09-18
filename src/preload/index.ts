@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 type Listener = (...args: unknown[]) => void
 
@@ -33,7 +34,7 @@ const api = {
   },
   getPreloadPath: (key: 'webview'): string => {
     if (key === 'webview') {
-      return path.join(__dirname, 'webview.js')
+      return pathToFileURL(path.join(__dirname, 'webview.js')).toString()
     }
 
     throw new Error(`Unknown preload key: ${key}`)

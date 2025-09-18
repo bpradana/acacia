@@ -3,7 +3,9 @@ import { BrowserToolbar } from '@renderer/components/toolbar/BrowserToolbar'
 import { TabTree } from '@renderer/components/tab-tree/TabTree'
 import { WebviewManager } from '@renderer/components/webview/WebviewManager'
 import { useTabStore } from '@renderer/stores/tabStore'
+import { Button } from '@renderer/components/ui/button'
 import { HOME_URL, type TabId, type TabNode } from '@common/tabs'
+import { Plus } from 'lucide-react'
 
 const flattenTabs = (nodes: Record<TabId, TabNode>, rootIds: TabId[]): TabNode[] => {
   const ordered: TabNode[] = []
@@ -62,6 +64,7 @@ export const App: React.FC = () => {
 
   React.useEffect(() => {
     if (activeTab) {
+      console.debug('[app] active tab changed', { tabId: activeTab.id, url: activeTab.url })
       setAddressValue(activeTab.url)
       setNavigationState({ canGoBack: false, canGoForward: false, isLoading: false })
     }
@@ -73,11 +76,21 @@ export const App: React.FC = () => {
     }
   }, [activeTabId])
 
+  const markProgrammaticNavigation = React.useCallback(
+    (tabId: TabId) => {
+      const webview = webviewRefs.current.get(tabId)
+      if (!webview) return null
+      ;(webview as unknown as { __acaciaProgrammatic?: boolean }).__acaciaProgrammatic = true
+      return webview
+    },
+    []
+  )
+
   const handleAddressSubmit = () => {
     if (!activeTabId) return
     const normalized = ensureHttpUrl(addressValue)
     if (!normalized) return
-    const webview = webviewRefs.current.get(activeTabId)
+    const webview = markProgrammaticNavigation(activeTabId)
     if (!webview) return
     webview.loadURL(normalized)
     updateTabUrl(activeTabId, normalized)
@@ -85,6 +98,7 @@ export const App: React.FC = () => {
 
   const handleOpenLink = (sourceTabId: TabId, url: string) => {
     const normalized = ensureHttpUrl(url) ?? url
+    console.debug('[app] open link request', { sourceTabId, url: normalized })
     createTab({ parentId: sourceTabId, url: normalized, title: 'Loading…' })
   }
 
@@ -122,7 +136,7 @@ export const App: React.FC = () => {
 
   const handleGoBack = () => {
     if (!activeTabId) return
-    const webview = webviewRefs.current.get(activeTabId)
+    const webview = markProgrammaticNavigation(activeTabId)
     if (webview?.canGoBack?.()) {
       webview.goBack()
     }
@@ -130,7 +144,7 @@ export const App: React.FC = () => {
 
   const handleGoForward = () => {
     if (!activeTabId) return
-    const webview = webviewRefs.current.get(activeTabId)
+    const webview = markProgrammaticNavigation(activeTabId)
     if (webview?.canGoForward?.()) {
       webview.goForward()
     }
@@ -138,13 +152,13 @@ export const App: React.FC = () => {
 
   const handleReload = () => {
     if (!activeTabId) return
-    const webview = webviewRefs.current.get(activeTabId)
+    const webview = markProgrammaticNavigation(activeTabId)
     webview?.reload()
   }
 
   const handleGoHome = () => {
     if (!activeTabId) return
-    const webview = webviewRefs.current.get(activeTabId)
+    const webview = markProgrammaticNavigation(activeTabId)
     if (!webview) return
     webview.loadURL(HOME_URL)
     updateTabUrl(activeTabId, HOME_URL)
@@ -153,8 +167,17 @@ export const App: React.FC = () => {
   return (
     <div className="flex h-full bg-background text-foreground">
       <aside className="flex w-72 flex-col border-r border-border bg-card">
-        <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Tab Tree
+        <div className="flex items-center justify-between px-3 py-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tab Tree</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={handleNewRootTab}
+            aria-label="New root tab"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
         </div>
         <TabTree
           nodes={nodes}

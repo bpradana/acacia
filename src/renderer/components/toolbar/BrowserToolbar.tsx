@@ -37,10 +37,18 @@ export const BrowserToolbar: React.FC<BrowserToolbarProps> = ({
 
   return (
     <div className="flex items-center gap-2 border-b border-border bg-card px-3 py-2">
-      <Button variant="ghost" size="icon" onClick={onGoBack} disabled={!canGoBack} aria-label="Back">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={onGoBack}
+        disabled={!canGoBack}
+        aria-label="Back"
+      >
         <ArrowLeft className="h-4 w-4" />
       </Button>
       <Button
+        type="button"
         variant="ghost"
         size="icon"
         onClick={onGoForward}
@@ -49,13 +57,13 @@ export const BrowserToolbar: React.FC<BrowserToolbarProps> = ({
       >
         <ArrowRight className="h-4 w-4" />
       </Button>
-      <Button variant="ghost" size="icon" onClick={onReload} aria-label="Reload">
+      <Button type="button" variant="ghost" size="icon" onClick={onReload} aria-label="Reload">
         {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
       </Button>
-      <Button variant="ghost" size="icon" onClick={onGoHome} aria-label="Home">
+      <Button type="button" variant="ghost" size="icon" onClick={onGoHome} aria-label="Home">
         <Home className="h-4 w-4" />
       </Button>
-      <Button variant="ghost" size="icon" onClick={onNewRootTab} aria-label="New tab">
+      <Button type="button" variant="ghost" size="icon" onClick={onNewRootTab} aria-label="New tab">
         <Plus className="h-4 w-4" />
       </Button>
       <form onSubmit={handleSubmit} className="flex-1">

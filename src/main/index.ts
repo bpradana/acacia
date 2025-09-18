@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -62,7 +63,7 @@ app.on('window-all-closed', () => {
 })
 
 ipcMain.handle('app:get-webview-preload', () => {
-  return path.join(__dirname, '../preload/webview.js')
+  return pathToFileURL(path.join(__dirname, '../preload/webview.js')).toString()
 })
 
 ipcMain.handle('app:focus', () => {

@@ -8,7 +8,6 @@ type WebviewEvent =
 let tabId = ''
 
 const emitToHost = (payload: WebviewEvent) => {
-  if (!tabId) return
   ipcRenderer.sendToHost('webview:event', payload)
 }
 
@@ -37,6 +36,7 @@ const setupLinkInterceptor = () => {
       if (isModifiedClick(event)) return
 
       event.preventDefault()
+      console.debug('[webview preload] intercepted click', { href: anchor.href, tabId })
       emitToHost({ type: 'link-clicked', url: anchor.href, tabId })
     },
     { capture: true }
@@ -45,6 +45,7 @@ const setupLinkInterceptor = () => {
 
 const setupMetadataObservers = () => {
   const notify = () => {
+    console.debug('[webview preload] metadata notify', { url: window.location.href, title: document.title, tabId })
     emitToHost({ type: 'metadata', url: window.location.href, title: document.title ?? 'Untitled', tabId })
   }
 
@@ -74,6 +75,7 @@ const setupMetadataObservers = () => {
 
 ipcRenderer.on('webview:init', (_event, payload: { tabId: string }) => {
   tabId = payload.tabId
+  console.debug('[webview preload] init', tabId)
   emitToHost({ type: 'navigation', url: window.location.href, tabId })
   emitToHost({ type: 'metadata', url: window.location.href, title: document.title ?? 'Untitled', tabId })
 })

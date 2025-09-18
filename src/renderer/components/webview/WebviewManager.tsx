@@ -37,6 +37,20 @@ export const WebviewManager: React.FC<WebviewManagerProps> = ({
     [webviewRefs]
   )
 
+  React.useEffect(() => {
+    if (!activeTabId) return
+    const webview = webviewRefs.current.get(activeTabId)
+    if (!webview || !(webview as unknown as { __acaciaReady?: boolean }).__acaciaReady) {
+      return
+    }
+
+    onNavigationStateChange(activeTabId, {
+      canGoBack: Boolean(webview.canGoBack && webview.canGoBack()),
+      canGoForward: Boolean(webview.canGoForward && webview.canGoForward()),
+      isLoading: Boolean(webview.isLoading && webview.isLoading()),
+    })
+  }, [activeTabId, onNavigationStateChange, webviewRefs])
+
   return (
     <div className="relative h-full w-full">
       {tabs.map(tab => (
@@ -107,16 +121,19 @@ const WebviewItem: React.FC<WebviewItemProps> = ({
         | { type: 'metadata'; url: string; title: string; tabId: TabId }
         | { type: 'navigation'; url: string; tabId: TabId }
 
-      if (!payload || payload.tabId !== tab.id) return
+      if (!payload) return
 
       switch (payload.type) {
         case 'link-clicked':
+          console.debug('[webview] link-clicked', { tabId: tab.id, url: payload.url })
           onLinkOpen(tab.id, payload.url)
           break
         case 'metadata':
+          console.debug('[webview] metadata', { tabId: tab.id, title: payload.title, url: payload.url })
           onMetadata(tab.id, { title: payload.title, url: payload.url })
           break
         case 'navigation':
+          console.debug('[webview] navigation', { tabId: tab.id, url: payload.url })
           onNavigation(tab.id, payload.url)
           emitNavigationState()
           break
@@ -125,15 +142,24 @@ const WebviewItem: React.FC<WebviewItemProps> = ({
       }
     }
 
-    const handleDidNavigate = () => {
+    const handleDidNavigate = (navigateEvent: Electron.Event & { url: string }) => {
       if (!readyRef.current) return
+      const currentUrl = element.getURL?.() ?? navigateEvent.url
+      if (currentUrl) {
+        onNavigation(tab.id, currentUrl)
+      }
       emitNavigationState()
     }
 
     const handleDomReady = () => {
       readyRef.current = true
+      ;(element as unknown as { __acaciaReady?: boolean }).__acaciaReady = true
       element.setAudioMuted(true)
       element.send('webview:init', { tabId: tab.id })
+      const currentUrl = element.getURL?.()
+      if (currentUrl) {
+        onNavigation(tab.id, currentUrl)
+      }
       emitNavigationState()
     }
 
@@ -142,13 +168,33 @@ const WebviewItem: React.FC<WebviewItemProps> = ({
       emitNavigationState()
     }
 
+    const handleWillNavigate = (navigateEvent: Electron.Event & { url: string }) => {
+      const targetUrl = navigateEvent.url
+      if (!targetUrl) return
+
+      const elementAny = element as unknown as { __acaciaProgrammatic?: boolean }
+
+      if (!readyRef.current) {
+        elementAny.__acaciaProgrammatic = false
+        return
+      }
+
+      if (elementAny.__acaciaProgrammatic) {
+        elementAny.__acaciaProgrammatic = false
+        return
+      }
+
+      navigateEvent.preventDefault()
+      onLinkOpen(tab.id, targetUrl)
+    }
+
     element.addEventListener('ipc-message', handleIpcMessage)
     element.addEventListener('did-navigate', handleDidNavigate as any)
     element.addEventListener('did-navigate-in-page', handleDidNavigate as any)
     element.addEventListener('dom-ready', handleDomReady as any)
     element.addEventListener('did-start-loading', handleLoading as any)
     element.addEventListener('did-stop-loading', handleLoading as any)
-
+    element.addEventListener('will-navigate', handleWillNavigate as any)
 
     return () => {
       element.removeEventListener('ipc-message', handleIpcMessage)
@@ -157,8 +203,10 @@ const WebviewItem: React.FC<WebviewItemProps> = ({
       element.removeEventListener('dom-ready', handleDomReady as any)
       element.removeEventListener('did-start-loading', handleLoading as any)
       element.removeEventListener('did-stop-loading', handleLoading as any)
+      element.removeEventListener('will-navigate', handleWillNavigate as any)
       unregister(tab.id)
       readyRef.current = false
+      ;(element as unknown as { __acaciaReady?: boolean }).__acaciaReady = false
     }
   }, [emitNavigationState, onLinkOpen, onMetadata, onNavigation, register, tab.id, unregister])
 
