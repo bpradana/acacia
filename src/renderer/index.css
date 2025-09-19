@@ -117,35 +117,6 @@ body {
   animation-delay: var(--tab-label-delay, 0s);
 }
 
-.tab-label--overflow::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0.25rem;
-  bottom: 0;
-  width: 1.25rem;
-  display: flex;
-  align-items: center;
-  padding-left: 0.25rem;
-  background: linear-gradient(
-    to right,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.85) 50%,
-    rgba(255, 255, 255, 1) 100%
-  );
-  color: inherit;
-  pointer-events: none;
-}
-
-.dark .tab-label--overflow::after {
-  background: linear-gradient(
-    to right,
-    rgba(15, 23, 42, 0) 0%,
-    rgba(15, 23, 42, 0.75) 50%,
-    rgba(15, 23, 42, 1) 100%
-  );
-}
-
 [data-resizing="true"] webview {
   pointer-events: none;
 }
