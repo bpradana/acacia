@@ -62,6 +62,12 @@ interface TabTreeItemProps {
 
 const INDENT_STEP = 12
 const MIN_AVAILABLE_WIDTH = 140
+const MARQUEE_BASE_SPEED_PX_PER_SEC = 40
+const MARQUEE_MIN_DURATION_SEC = 3
+const MARQUEE_MAX_DURATION_SEC = 12
+const MARQUEE_IDLE_DELAY_MS = 600
+const LABEL_RESERVED_WIDTH = 108
+const LABEL_MIN_WIDTH = 72
 
 const TabTreeItem: React.FC<TabTreeItemProps> = ({
   nodeId,
@@ -80,15 +86,22 @@ const TabTreeItem: React.FC<TabTreeItemProps> = ({
   const hasChildren = node.children.length > 0
   const isExpanded = node.isExpanded
   const isActive = nodeId === activeTabId
-  const containerRef = React.useRef<HTMLSpanElement | null>(null)
+  const containerRef = React.useRef<HTMLDivElement | null>(null)
   const textRef = React.useRef<HTMLSpanElement | null>(null)
   const [isOverflowing, setIsOverflowing] = React.useState(false)
   const [overflowOffset, setOverflowOffset] = React.useState('0px')
+  const [animationDuration, setAnimationDuration] = React.useState<string | null>(null)
+  const [animationDelay, setAnimationDelay] = React.useState<string | null>(null)
 
   const paddedIndent = React.useMemo(() => {
     const maxIndent = Math.max(sidebarWidth - MIN_AVAILABLE_WIDTH, 0)
     return Math.min(level * INDENT_STEP, maxIndent)
   }, [level, sidebarWidth])
+
+  const availableLabelWidth = React.useMemo(() => {
+    const maxWidth = sidebarWidth - paddedIndent - LABEL_RESERVED_WIDTH
+    return Math.max(maxWidth, LABEL_MIN_WIDTH)
+  }, [paddedIndent, sidebarWidth])
 
   const measureOverflow = React.useCallback(() => {
     const container = containerRef.current
@@ -98,18 +111,52 @@ const TabTreeItem: React.FC<TabTreeItemProps> = ({
     const overflowAmount = text.scrollWidth - container.clientWidth
     if (overflowAmount > 4) {
       setIsOverflowing(true)
-      setOverflowOffset(`-${overflowAmount}px`)
+      const distance = Math.max(overflowAmount, 0)
+      const durationSeconds = Math.min(
+        Math.max(distance / MARQUEE_BASE_SPEED_PX_PER_SEC, MARQUEE_MIN_DURATION_SEC),
+        MARQUEE_MAX_DURATION_SEC
+      )
+      setOverflowOffset(`-${distance}px`)
+      setAnimationDuration(`${durationSeconds.toFixed(2)}s`)
+      setAnimationDelay(`${(MARQUEE_IDLE_DELAY_MS / 1000).toFixed(2)}s`)
     } else {
       setIsOverflowing(false)
       setOverflowOffset('0px')
+      setAnimationDuration(null)
+      setAnimationDelay(null)
     }
-  }, [node.title, node.url, sidebarWidth])
 
-  React.useEffect(() => {
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.debug('tab-tree:overflow-check', {
+        id: nodeId,
+        sidebarWidth,
+        clientWidth: container.clientWidth,
+        scrollWidth: text.scrollWidth,
+        overflowAmount,
+        paddedIndent,
+        availableLabelWidth,
+      })
+    }
+  }, [availableLabelWidth, node.title, node.url, nodeId, paddedIndent, sidebarWidth])
+
+  const labelStyle = React.useMemo(
+    () =>
+      ({
+        width: `${availableLabelWidth}px`,
+        maxWidth: `${availableLabelWidth}px`,
+        '--tab-label-offset': overflowOffset,
+        ...(animationDuration ? { '--tab-label-duration': animationDuration } : {}),
+        ...(animationDelay ? { '--tab-label-delay': animationDelay } : {}),
+      }) as React.CSSProperties,
+    [animationDelay, animationDuration, availableLabelWidth, overflowOffset]
+  )
+
+  React.useLayoutEffect(() => {
     measureOverflow()
   }, [measureOverflow])
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     const container = containerRef.current
     if (!container) return
 
@@ -155,19 +202,19 @@ const TabTreeItem: React.FC<TabTreeItemProps> = ({
           <span className="mr-1 h-7 w-7 shrink-0" />
         )}
         <div className="min-w-0 flex-1 pr-2">
-          <span
+          <div
             ref={containerRef}
             className={cn(
-              'tab-label block overflow-hidden text-ellipsis whitespace-nowrap font-medium text-foreground',
-              isOverflowing && 'tab-label--overflow'
+              'tab-label relative block overflow-hidden whitespace-nowrap font-medium text-foreground',
+              isOverflowing ? 'tab-label--overflow' : 'tab-label--clamped'
             )}
             title={node.title || node.url}
-            style={{ '--tab-label-offset': overflowOffset } as React.CSSProperties}
+            style={labelStyle}
           >
             <span ref={textRef} className="tab-label__text inline-block">
               {node.title || node.url}
             </span>
-          </span>
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Button

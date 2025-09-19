@@ -103,16 +103,27 @@ body {
   will-change: transform;
 }
 
+.tab-label--clamped {
+  text-overflow: ellipsis;
+}
+
+.tab-label--overflow {
+  text-overflow: clip;
+}
+
 .tab-label--overflow .tab-label__text {
   padding-inline-end: 1.5rem;
+  animation: tab-label-marquee var(--tab-label-duration, 6s) linear infinite;
+  animation-delay: var(--tab-label-delay, 0s);
 }
 
 .tab-label--overflow::after {
-  content: '…';
+  content: '';
   position: absolute;
   top: 0;
   right: 0.25rem;
   bottom: 0;
+  width: 1.25rem;
   display: flex;
   align-items: center;
   padding-left: 0.25rem;
@@ -133,10 +144,6 @@ body {
     rgba(15, 23, 42, 0.75) 50%,
     rgba(15, 23, 42, 1) 100%
   );
-}
-
-.group:hover .tab-label--overflow .tab-label__text {
-  animation: tab-label-marquee 6s linear infinite;
 }
 
 [data-resizing="true"] webview {
