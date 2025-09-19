@@ -55,6 +55,7 @@
       "package.json"
     ],
     "mac": {
+      "icon": "icons/acacia.icns",
       "target": [
         {
           "target": "dmg",

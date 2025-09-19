@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from "electron";
+import { app, BrowserWindow, ipcMain, nativeImage, shell } from "electron";
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -26,6 +26,11 @@ const loadRenderer = async (window: BrowserWindow) => {
 };
 
 const createWindow = async () => {
+  const isDev = !app.isPackaged;
+  const iconPath = isDev
+    ? path.join(process.cwd(), "assets/icons/acacia.png")
+    : path.join(__dirname, "../../assets/icons/acacia.png");
+
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -34,6 +39,7 @@ const createWindow = async () => {
     backgroundColor: "#0f172a",
     show: false,
     title: "Acacia",
+    icon: nativeImage.createFromPath(iconPath),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
