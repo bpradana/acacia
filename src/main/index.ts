@@ -1,8 +1,29 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 let mainWindow: BrowserWindow | null = null
+
+const loadRenderer = async (window: BrowserWindow) => {
+  const devServerUrl = process.env.VITE_DEV_SERVER_URL
+
+  if (!app.isPackaged && devServerUrl) {
+    await window.loadURL(devServerUrl)
+    return
+  }
+
+  const rendererIndexPath = path.join(__dirname, '../renderer/index.html')
+
+  if (fs.existsSync(rendererIndexPath)) {
+    await window.loadFile(rendererIndexPath)
+    return
+  }
+
+  throw new Error(
+    'Unable to determine renderer entry. Either set VITE_DEV_SERVER_URL or run `npm run build` to generate dist/renderer/index.html.'
+  )
+}
 
 const createWindow = async () => {
   mainWindow = new BrowserWindow({
@@ -26,13 +47,7 @@ const createWindow = async () => {
     mainWindow?.show()
   })
 
-  const devServerUrl = process.env.VITE_DEV_SERVER_URL ?? 'http://localhost:5173'
-
-  if (!app.isPackaged) {
-    await mainWindow.loadURL(devServerUrl)
-  } else {
-    await mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
-  }
+  await loadRenderer(mainWindow)
 
   mainWindow.on('closed', () => {
     mainWindow = null
