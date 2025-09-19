@@ -1,6 +1,13 @@
 # Acacia
 
+<p align="center">
+  <img src="./docs/assets/logo.jpeg" alt="Acacia logo" />
+</p>
+
 Acacia is an Electron desktop browser that organizes tabs as a collapsible tree. The renderer is built with React, TypeScript, Vite, Tailwind CSS, and Zustand. The main process launches a single window, injects a hardened preload bridge, and manages webviews so every link you click can branch into its own nested context.
+
+> [!CAUTION]
+> This code is fully written by AI. Expect bugs and AI slop.
 
 ## Feature Highlights
 - Nested tab tree in a resizable sidebar with expand/collapse, close tab, and close subtree actions.
