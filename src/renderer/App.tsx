@@ -72,6 +72,7 @@ export const App: React.FC = () => {
   const webviewRefs = React.useRef(new Map<TabId, Electron.WebviewTag>());
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const resizingRef = React.useRef(false);
+  const [isResizing, setIsResizing] = React.useState(false);
   const [sidebarWidth, setSidebarWidth] = React.useState(288);
 
   const tabList = React.useMemo(
@@ -192,7 +193,15 @@ export const App: React.FC = () => {
   const handleSidebarPointerDown = React.useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
       event.preventDefault();
+      const pointerId = event.pointerId;
+      const handleElement = event.currentTarget;
+
       resizingRef.current = true;
+      setIsResizing(true);
+
+      if (handleElement.setPointerCapture) {
+        handleElement.setPointerCapture(pointerId);
+      }
 
       const containerLeft =
         containerRef.current?.getBoundingClientRect().left ?? 0;
@@ -206,14 +215,26 @@ export const App: React.FC = () => {
 
       const handlePointerUp = () => {
         resizingRef.current = false;
+        setIsResizing(false);
         document.removeEventListener("pointermove", handlePointerMove);
         document.removeEventListener("pointerup", handlePointerUp);
+        document.removeEventListener("pointercancel", handlePointerUp);
+        if (handleElement.releasePointerCapture) {
+          try {
+            handleElement.releasePointerCapture(pointerId);
+          } catch (error) {
+            // Pointer capture might already be released; ignore.
+          }
+        }
         document.body.classList.remove("select-none");
+        document.body.style.cursor = "";
       };
 
       document.addEventListener("pointermove", handlePointerMove);
       document.addEventListener("pointerup", handlePointerUp);
+      document.addEventListener("pointercancel", handlePointerUp);
       document.body.classList.add("select-none");
+      document.body.style.cursor = "col-resize";
     },
     [],
   );
@@ -221,6 +242,7 @@ export const App: React.FC = () => {
   React.useEffect(() => {
     return () => {
       document.body.classList.remove("select-none");
+      document.body.style.cursor = "";
     };
   }, []);
 
@@ -228,7 +250,7 @@ export const App: React.FC = () => {
     <div
       ref={containerRef}
       className="flex h-full bg-background text-foreground"
-      data-resizing={resizingRef.current ? "true" : "false"}
+      data-resizing={isResizing ? "true" : "false"}
     >
       <aside
         className="flex flex-col border-r border-border bg-card"

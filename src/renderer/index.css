@@ -139,6 +139,10 @@ body {
   animation: tab-label-marquee 6s linear infinite;
 }
 
+[data-resizing="true"] webview {
+  pointer-events: none;
+}
+
 @keyframes tab-label-marquee {
   0%,
   20% {

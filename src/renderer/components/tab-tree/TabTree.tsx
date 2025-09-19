@@ -133,7 +133,7 @@ const TabTreeItem: React.FC<TabTreeItemProps> = ({
     <div className="space-y-1">
       <div
         className={cn(
-          'group flex cursor-pointer items-center rounded-md px-2 py-1 text-sm transition-colors',
+          'group flex min-w-0 cursor-pointer items-center rounded-md px-2 py-1 text-sm transition-colors',
           isActive ? 'bg-primary/10 text-foreground' : 'hover:bg-muted'
         )}
         style={{ paddingLeft: `${paddedIndent}px` }}
@@ -169,7 +169,7 @@ const TabTreeItem: React.FC<TabTreeItemProps> = ({
             </span>
           </span>
         </div>
-        <div className="flex shrink-0 items-center space-x-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="flex shrink-0 items-center gap-1">
           <Button
             variant="ghost"
             size="sm"
