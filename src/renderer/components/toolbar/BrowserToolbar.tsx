@@ -1,20 +1,27 @@
-import * as React from 'react'
-import { ArrowLeft, ArrowRight, Home, Loader2, Plus, RefreshCcw } from 'lucide-react'
-import { Button } from '@renderer/components/ui/button'
-import { Input } from '@renderer/components/ui/input'
+import * as React from "react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Home,
+  Loader2,
+  Plus,
+  RefreshCcw,
+} from "lucide-react";
+import { Button } from "@renderer/components/ui/button";
+import { Input } from "@renderer/components/ui/input";
 
 interface BrowserToolbarProps {
-  address: string
-  canGoBack: boolean
-  canGoForward: boolean
-  isLoading: boolean
-  onAddressChange: (value: string) => void
-  onSubmitAddress: () => void
-  onGoBack: () => void
-  onGoForward: () => void
-  onReload: () => void
-  onGoHome: () => void
-  onNewRootTab: () => void
+  address: string;
+  canGoBack: boolean;
+  canGoForward: boolean;
+  isLoading: boolean;
+  onAddressChange: (value: string) => void;
+  onSubmitAddress: () => void;
+  onGoBack: () => void;
+  onGoForward: () => void;
+  onReload: () => void;
+  onGoHome: () => void;
+  onNewRootTab: () => void;
 }
 
 export const BrowserToolbar: React.FC<BrowserToolbarProps> = ({
@@ -31,9 +38,9 @@ export const BrowserToolbar: React.FC<BrowserToolbarProps> = ({
   onNewRootTab,
 }) => {
   const handleSubmit = (event: React.FormEvent) => {
-    event.preventDefault()
-    onSubmitAddress()
-  }
+    event.preventDefault();
+    onSubmitAddress();
+  };
 
   return (
     <div className="flex items-center gap-2 border-b border-border bg-card px-3 py-2">
@@ -57,23 +64,45 @@ export const BrowserToolbar: React.FC<BrowserToolbarProps> = ({
       >
         <ArrowRight className="h-4 w-4" />
       </Button>
-      <Button type="button" variant="ghost" size="icon" onClick={onReload} aria-label="Reload">
-        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={onReload}
+        aria-label="Reload"
+      >
+        {isLoading ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <RefreshCcw className="h-4 w-4" />
+        )}
       </Button>
-      <Button type="button" variant="ghost" size="icon" onClick={onGoHome} aria-label="Home">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={onGoHome}
+        aria-label="Home"
+      >
         <Home className="h-4 w-4" />
       </Button>
-      <Button type="button" variant="ghost" size="icon" onClick={onNewRootTab} aria-label="New tab">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={onNewRootTab}
+        aria-label="New tab"
+      >
         <Plus className="h-4 w-4" />
       </Button>
       <form onSubmit={handleSubmit} className="flex-1">
         <Input
           value={address}
-          onChange={event => onAddressChange(event.target.value)}
+          onChange={(event) => onAddressChange(event.target.value)}
           placeholder="Enter URL"
           spellCheck={false}
         />
       </form>
     </div>
-  )
-}
+  );
+};

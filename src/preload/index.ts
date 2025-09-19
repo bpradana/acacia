@@ -1,44 +1,48 @@
-import { contextBridge, ipcRenderer } from 'electron'
-import path from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { contextBridge, ipcRenderer } from "electron";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
 
-type Listener = (...args: unknown[]) => void
+type Listener = (...args: unknown[]) => void;
 
-type Disposer = () => void
+type Disposer = () => void;
 
 const createOn = () => {
   return (channel: string, listener: Listener): Disposer => {
-    const subscription = (_event: Electron.IpcRendererEvent, ...args: unknown[]) => {
-      listener(...args)
-    }
+    const subscription = (
+      _event: Electron.IpcRendererEvent,
+      ...args: unknown[]
+    ) => {
+      listener(...args);
+    };
 
-    ipcRenderer.on(channel, subscription)
+    ipcRenderer.on(channel, subscription);
 
     return () => {
-      ipcRenderer.removeListener(channel, subscription)
-    }
-  }
-}
+      ipcRenderer.removeListener(channel, subscription);
+    };
+  };
+};
 
 const api = {
-  invoke: <T>(channel: string, payload?: unknown): Promise<T> => ipcRenderer.invoke(channel, payload as never),
+  invoke: <T>(channel: string, payload?: unknown): Promise<T> =>
+    ipcRenderer.invoke(channel, payload as never),
   send: (channel: string, payload?: unknown): void => {
-    ipcRenderer.send(channel, payload as never)
+    ipcRenderer.send(channel, payload as never);
   },
   on: createOn(),
   once: (channel: string, listener: Listener): void => {
-    ipcRenderer.once(channel, (_event, ...args) => listener(...args))
+    ipcRenderer.once(channel, (_event, ...args) => listener(...args));
   },
   removeAllListeners: (channel: string): void => {
-    ipcRenderer.removeAllListeners(channel)
+    ipcRenderer.removeAllListeners(channel);
   },
-  getPreloadPath: (key: 'webview'): string => {
-    if (key === 'webview') {
-      return pathToFileURL(path.join(__dirname, 'webview.js')).toString()
+  getPreloadPath: (key: "webview"): string => {
+    if (key === "webview") {
+      return pathToFileURL(path.join(__dirname, "webview.js")).toString();
     }
 
-    throw new Error(`Unknown preload key: ${key}`)
+    throw new Error(`Unknown preload key: ${key}`);
   },
-}
+};
 
-contextBridge.exposeInMainWorld('electronAPI', api)
+contextBridge.exposeInMainWorld("electronAPI", api);
