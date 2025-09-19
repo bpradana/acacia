@@ -9,6 +9,7 @@ interface TabTreeProps {
   nodes: Record<TabId, TabNode>
   rootIds: TabId[]
   activeTabId: TabId | null
+  sidebarWidth: number
   onSelect: (tabId: TabId) => void
   onCloseTab: (tabId: TabId) => void
   onCloseSubtree: (tabId: TabId) => void
@@ -19,6 +20,7 @@ export const TabTree: React.FC<TabTreeProps> = ({
   nodes,
   rootIds,
   activeTabId,
+  sidebarWidth,
   onSelect,
   onCloseTab,
   onCloseSubtree,
@@ -34,6 +36,7 @@ export const TabTree: React.FC<TabTreeProps> = ({
             level={0}
             nodes={nodes}
             activeTabId={activeTabId}
+            sidebarWidth={sidebarWidth}
             onSelect={onSelect}
             onCloseTab={onCloseTab}
             onCloseSubtree={onCloseSubtree}
@@ -50,17 +53,22 @@ interface TabTreeItemProps {
   level: number
   nodes: Record<TabId, TabNode>
   activeTabId: TabId | null
+  sidebarWidth: number
   onSelect: (tabId: TabId) => void
   onCloseTab: (tabId: TabId) => void
   onCloseSubtree: (tabId: TabId) => void
   onToggleExpand: (tabId: TabId) => void
 }
 
+const INDENT_STEP = 12
+const MIN_AVAILABLE_WIDTH = 140
+
 const TabTreeItem: React.FC<TabTreeItemProps> = ({
   nodeId,
   level,
   nodes,
   activeTabId,
+  sidebarWidth,
   onSelect,
   onCloseTab,
   onCloseSubtree,
@@ -72,6 +80,54 @@ const TabTreeItem: React.FC<TabTreeItemProps> = ({
   const hasChildren = node.children.length > 0
   const isExpanded = node.isExpanded
   const isActive = nodeId === activeTabId
+  const containerRef = React.useRef<HTMLSpanElement | null>(null)
+  const textRef = React.useRef<HTMLSpanElement | null>(null)
+  const [isOverflowing, setIsOverflowing] = React.useState(false)
+  const [overflowOffset, setOverflowOffset] = React.useState('0px')
+
+  const paddedIndent = React.useMemo(() => {
+    const maxIndent = Math.max(sidebarWidth - MIN_AVAILABLE_WIDTH, 0)
+    return Math.min(level * INDENT_STEP, maxIndent)
+  }, [level, sidebarWidth])
+
+  const measureOverflow = React.useCallback(() => {
+    const container = containerRef.current
+    const text = textRef.current
+    if (!container || !text) return
+
+    const overflowAmount = text.scrollWidth - container.clientWidth
+    if (overflowAmount > 4) {
+      setIsOverflowing(true)
+      setOverflowOffset(`-${overflowAmount}px`)
+    } else {
+      setIsOverflowing(false)
+      setOverflowOffset('0px')
+    }
+  }, [node.title, node.url, sidebarWidth])
+
+  React.useEffect(() => {
+    measureOverflow()
+  }, [measureOverflow])
+
+  React.useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    if (typeof ResizeObserver === 'undefined') {
+      measureOverflow()
+      window.addEventListener('resize', measureOverflow)
+      return () => {
+        window.removeEventListener('resize', measureOverflow)
+      }
+    }
+
+    const observer = new ResizeObserver(() => {
+      measureOverflow()
+    })
+
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [measureOverflow])
 
   return (
     <div className="space-y-1">
@@ -80,14 +136,14 @@ const TabTreeItem: React.FC<TabTreeItemProps> = ({
           'group flex cursor-pointer items-center rounded-md px-2 py-1 text-sm transition-colors',
           isActive ? 'bg-primary/10 text-foreground' : 'hover:bg-muted'
         )}
-        style={{ paddingLeft: `${level * 12}px` }}
+        style={{ paddingLeft: `${paddedIndent}px` }}
         onClick={() => onSelect(nodeId)}
       >
         {hasChildren ? (
           <Button
             variant="ghost"
             size="sm"
-            className="mr-1 h-7 w-7 p-0 text-muted-foreground opacity-70 transition-opacity group-hover:opacity-100"
+            className="mr-1 h-7 w-7 shrink-0 p-0 text-muted-foreground opacity-70 transition-opacity group-hover:opacity-100"
             onClick={event => {
               event.stopPropagation()
               onToggleExpand(nodeId)
@@ -96,16 +152,28 @@ const TabTreeItem: React.FC<TabTreeItemProps> = ({
             {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </Button>
         ) : (
-          <span className="mr-1 h-7 w-7" />
+          <span className="mr-1 h-7 w-7 shrink-0" />
         )}
-        <div className="flex-1 truncate pr-2 font-medium text-foreground">
-          {node.title || node.url}
+        <div className="min-w-0 flex-1 pr-2">
+          <span
+            ref={containerRef}
+            className={cn(
+              'tab-label block overflow-hidden text-ellipsis whitespace-nowrap font-medium text-foreground',
+              isOverflowing && 'tab-label--overflow'
+            )}
+            title={node.title || node.url}
+            style={{ '--tab-label-offset': overflowOffset } as React.CSSProperties}
+          >
+            <span ref={textRef} className="tab-label__text inline-block">
+              {node.title || node.url}
+            </span>
+          </span>
         </div>
-        <div className="flex items-center space-x-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="flex shrink-0 items-center space-x-1 opacity-0 transition-opacity group-hover:opacity-100">
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+            className="h-7 w-7 shrink-0 p-0 text-muted-foreground hover:text-destructive"
             onClick={event => {
               event.stopPropagation()
               onCloseTab(nodeId)
@@ -117,7 +185,7 @@ const TabTreeItem: React.FC<TabTreeItemProps> = ({
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+            className="h-7 w-7 shrink-0 p-0 text-muted-foreground hover:text-destructive"
             onClick={event => {
               event.stopPropagation()
               onCloseSubtree(nodeId)
@@ -137,6 +205,7 @@ const TabTreeItem: React.FC<TabTreeItemProps> = ({
               level={level + 1}
               nodes={nodes}
               activeTabId={activeTabId}
+              sidebarWidth={sidebarWidth}
               onSelect={onSelect}
               onCloseTab={onCloseTab}
               onCloseSubtree={onCloseSubtree}

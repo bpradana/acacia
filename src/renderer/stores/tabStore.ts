@@ -82,8 +82,6 @@ export const useTabStore = create<TabStore>((set, get) => ({
       activeTabId: newId,
     })
 
-    console.debug('[tabs] created', { parentId, newId, url })
-
     return newId
   },
   activateTab: tabId => {

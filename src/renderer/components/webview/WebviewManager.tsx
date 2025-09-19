@@ -125,15 +125,12 @@ const WebviewItem: React.FC<WebviewItemProps> = ({
 
       switch (payload.type) {
         case 'link-clicked':
-          console.debug('[webview] link-clicked', { tabId: tab.id, url: payload.url })
           onLinkOpen(tab.id, payload.url)
           break
         case 'metadata':
-          console.debug('[webview] metadata', { tabId: tab.id, title: payload.title, url: payload.url })
           onMetadata(tab.id, { title: payload.title, url: payload.url })
           break
         case 'navigation':
-          console.debug('[webview] navigation', { tabId: tab.id, url: payload.url })
           onNavigation(tab.id, payload.url)
           emitNavigationState()
           break

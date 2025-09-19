@@ -1,39 +1,45 @@
-import * as React from 'react'
-import { BrowserToolbar } from '@renderer/components/toolbar/BrowserToolbar'
-import { TabTree } from '@renderer/components/tab-tree/TabTree'
-import { WebviewManager } from '@renderer/components/webview/WebviewManager'
-import { useTabStore } from '@renderer/stores/tabStore'
-import { Button } from '@renderer/components/ui/button'
-import { HOME_URL, type TabId, type TabNode } from '@common/tabs'
-import { Plus } from 'lucide-react'
+import * as React from "react";
+import { BrowserToolbar } from "@renderer/components/toolbar/BrowserToolbar";
+import { TabTree } from "@renderer/components/tab-tree/TabTree";
+import { WebviewManager } from "@renderer/components/webview/WebviewManager";
+import { useTabStore } from "@renderer/stores/tabStore";
+import { Button } from "@renderer/components/ui/button";
+import { HOME_URL, type TabId, type TabNode } from "@common/tabs";
+import { Plus } from "lucide-react";
 
-const flattenTabs = (nodes: Record<TabId, TabNode>, rootIds: TabId[]): TabNode[] => {
-  const ordered: TabNode[] = []
+const flattenTabs = (
+  nodes: Record<TabId, TabNode>,
+  rootIds: TabId[],
+): TabNode[] => {
+  const ordered: TabNode[] = [];
 
   const visit = (id: TabId) => {
-    const node = nodes[id]
-    if (!node) return
-    ordered.push(node)
-    node.children.forEach(visit)
-  }
+    const node = nodes[id];
+    if (!node) return;
+    ordered.push(node);
+    node.children.forEach(visit);
+  };
 
-  rootIds.forEach(visit)
+  rootIds.forEach(visit);
 
-  return ordered
-}
+  return ordered;
+};
 
 const ensureHttpUrl = (value: string): string | null => {
-  const trimmed = value.trim()
+  const trimmed = value.trim();
   if (!trimmed) {
-    return null
+    return null;
   }
 
   if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(trimmed)) {
-    return trimmed
+    return trimmed;
   }
 
-  return `https://${trimmed}`
-}
+  return `https://${trimmed}`;
+};
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(Math.max(value, min), max);
 
 export const App: React.FC = () => {
   const {
@@ -47,128 +53,191 @@ export const App: React.FC = () => {
     closeTab,
     closeSubtree,
     toggleExpanded,
-  } = useTabStore()
+  } = useTabStore();
 
-  const activeTab = activeTabId ? nodes[activeTabId] : null
-  const [addressValue, setAddressValue] = React.useState(activeTab?.url ?? HOME_URL)
+  const activeTab = activeTabId ? nodes[activeTabId] : null;
+  const [addressValue, setAddressValue] = React.useState(
+    activeTab?.url ?? HOME_URL,
+  );
   const [navigationState, setNavigationState] = React.useState({
     canGoBack: false,
     canGoForward: false,
     isLoading: false,
-  })
+  });
 
-  const preloadPath = React.useMemo(() => window.electronAPI.getPreloadPath('webview'), [])
-  const webviewRefs = React.useRef(new Map<TabId, Electron.WebviewTag>())
+  const preloadPath = React.useMemo(
+    () => window.electronAPI.getPreloadPath("webview"),
+    [],
+  );
+  const webviewRefs = React.useRef(new Map<TabId, Electron.WebviewTag>());
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
+  const resizingRef = React.useRef(false);
+  const [sidebarWidth, setSidebarWidth] = React.useState(288);
 
-  const tabList = React.useMemo(() => flattenTabs(nodes, rootIds), [nodes, rootIds])
+  const tabList = React.useMemo(
+    () => flattenTabs(nodes, rootIds),
+    [nodes, rootIds],
+  );
 
   React.useEffect(() => {
     if (activeTab) {
-      console.debug('[app] active tab changed', { tabId: activeTab.id, url: activeTab.url })
-      setAddressValue(activeTab.url)
-      setNavigationState({ canGoBack: false, canGoForward: false, isLoading: false })
+      setAddressValue(activeTab.url);
+      setNavigationState({
+        canGoBack: false,
+        canGoForward: false,
+        isLoading: false,
+      });
     }
-  }, [activeTab?.id, activeTab?.url])
+  }, [activeTab?.id, activeTab?.url]);
 
   React.useEffect(() => {
     if (!activeTabId) {
-      setNavigationState({ canGoBack: false, canGoForward: false, isLoading: false })
+      setNavigationState({
+        canGoBack: false,
+        canGoForward: false,
+        isLoading: false,
+      });
     }
-  }, [activeTabId])
+  }, [activeTabId]);
 
-  const markProgrammaticNavigation = React.useCallback(
-    (tabId: TabId) => {
-      const webview = webviewRefs.current.get(tabId)
-      if (!webview) return null
-      ;(webview as unknown as { __acaciaProgrammatic?: boolean }).__acaciaProgrammatic = true
-      return webview
-    },
-    []
-  )
+  const markProgrammaticNavigation = React.useCallback((tabId: TabId) => {
+    const webview = webviewRefs.current.get(tabId);
+    if (!webview) return null;
+    (
+      webview as unknown as { __acaciaProgrammatic?: boolean }
+    ).__acaciaProgrammatic = true;
+    return webview;
+  }, []);
 
   const handleAddressSubmit = () => {
-    if (!activeTabId) return
-    const normalized = ensureHttpUrl(addressValue)
-    if (!normalized) return
-    const webview = markProgrammaticNavigation(activeTabId)
-    if (!webview) return
-    webview.loadURL(normalized)
-    updateTabUrl(activeTabId, normalized)
-  }
+    if (!activeTabId) return;
+    const normalized = ensureHttpUrl(addressValue);
+    if (!normalized) return;
+    const webview = markProgrammaticNavigation(activeTabId);
+    if (!webview) return;
+    webview.loadURL(normalized);
+    updateTabUrl(activeTabId, normalized);
+  };
 
   const handleOpenLink = (sourceTabId: TabId, url: string) => {
-    const normalized = ensureHttpUrl(url) ?? url
-    console.debug('[app] open link request', { sourceTabId, url: normalized })
-    createTab({ parentId: sourceTabId, url: normalized, title: 'Loading…' })
-  }
+    const normalized = ensureHttpUrl(url) ?? url;
+    createTab({ parentId: sourceTabId, url: normalized, title: "Loading…" });
+  };
 
-  const handleMetadata = (tabId: TabId, metadata: { title: string; url: string }) => {
-    updateTabMetadata(tabId, metadata)
-  }
+  const handleMetadata = (
+    tabId: TabId,
+    metadata: { title: string; url: string },
+  ) => {
+    updateTabMetadata(tabId, metadata);
+  };
 
   const handleNavigation = (tabId: TabId, url: string) => {
-    updateTabUrl(tabId, url)
+    updateTabUrl(tabId, url);
     if (tabId === activeTabId) {
-      setAddressValue(url)
+      setAddressValue(url);
     }
-  }
+  };
 
   const handleNavigationStateChange = (
     tabId: TabId,
-    state: { canGoBack: boolean; canGoForward: boolean; isLoading: boolean }
+    state: { canGoBack: boolean; canGoForward: boolean; isLoading: boolean },
   ) => {
     if (tabId === activeTabId) {
-      setNavigationState(state)
+      setNavigationState(state);
     }
-  }
+  };
 
   const handleCloseTab = (tabId: TabId) => {
-    closeTab(tabId)
-  }
+    closeTab(tabId);
+  };
 
   const handleCloseSubtree = (tabId: TabId) => {
-    closeSubtree(tabId)
-  }
+    closeSubtree(tabId);
+  };
 
   const handleNewRootTab = () => {
-    createTab({ parentId: null, url: HOME_URL, title: 'Home' })
-  }
+    createTab({ parentId: null, url: HOME_URL, title: "Home" });
+  };
 
   const handleGoBack = () => {
-    if (!activeTabId) return
-    const webview = markProgrammaticNavigation(activeTabId)
+    if (!activeTabId) return;
+    const webview = markProgrammaticNavigation(activeTabId);
     if (webview?.canGoBack?.()) {
-      webview.goBack()
+      webview.goBack();
     }
-  }
+  };
 
   const handleGoForward = () => {
-    if (!activeTabId) return
-    const webview = markProgrammaticNavigation(activeTabId)
+    if (!activeTabId) return;
+    const webview = markProgrammaticNavigation(activeTabId);
     if (webview?.canGoForward?.()) {
-      webview.goForward()
+      webview.goForward();
     }
-  }
+  };
 
   const handleReload = () => {
-    if (!activeTabId) return
-    const webview = markProgrammaticNavigation(activeTabId)
-    webview?.reload()
-  }
+    if (!activeTabId) return;
+    const webview = markProgrammaticNavigation(activeTabId);
+    webview?.reload();
+  };
 
   const handleGoHome = () => {
-    if (!activeTabId) return
-    const webview = markProgrammaticNavigation(activeTabId)
-    if (!webview) return
-    webview.loadURL(HOME_URL)
-    updateTabUrl(activeTabId, HOME_URL)
-  }
+    if (!activeTabId) return;
+    const webview = markProgrammaticNavigation(activeTabId);
+    if (!webview) return;
+    webview.loadURL(HOME_URL);
+    updateTabUrl(activeTabId, HOME_URL);
+  };
+
+  const handleSidebarPointerDown = React.useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      resizingRef.current = true;
+
+      const containerLeft =
+        containerRef.current?.getBoundingClientRect().left ?? 0;
+
+      const handlePointerMove = (moveEvent: PointerEvent) => {
+        if (!resizingRef.current) return;
+        const proposedWidth = moveEvent.clientX - containerLeft;
+        const nextWidth = clamp(proposedWidth, 220, 480);
+        setSidebarWidth(nextWidth);
+      };
+
+      const handlePointerUp = () => {
+        resizingRef.current = false;
+        document.removeEventListener("pointermove", handlePointerMove);
+        document.removeEventListener("pointerup", handlePointerUp);
+        document.body.classList.remove("select-none");
+      };
+
+      document.addEventListener("pointermove", handlePointerMove);
+      document.addEventListener("pointerup", handlePointerUp);
+      document.body.classList.add("select-none");
+    },
+    [],
+  );
+
+  React.useEffect(() => {
+    return () => {
+      document.body.classList.remove("select-none");
+    };
+  }, []);
 
   return (
-    <div className="flex h-full bg-background text-foreground">
-      <aside className="flex w-72 flex-col border-r border-border bg-card">
+    <div
+      ref={containerRef}
+      className="flex h-full bg-background text-foreground"
+      data-resizing={resizingRef.current ? "true" : "false"}
+    >
+      <aside
+        className="flex flex-col border-r border-border bg-card"
+        style={{ width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px` }}
+      >
         <div className="flex items-center justify-between px-3 py-2">
-          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tab Tree</span>
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Tab Tree
+          </span>
           <Button
             type="button"
             variant="ghost"
@@ -183,12 +252,22 @@ export const App: React.FC = () => {
           nodes={nodes}
           rootIds={rootIds}
           activeTabId={activeTabId}
+          sidebarWidth={sidebarWidth}
           onSelect={activateTab}
           onCloseTab={handleCloseTab}
           onCloseSubtree={handleCloseSubtree}
           onToggleExpand={toggleExpanded}
         />
       </aside>
+      <div
+        className="flex w-2 cursor-col-resize items-center justify-center border-r border-border bg-card/70 hover:bg-card"
+        onPointerDown={handleSidebarPointerDown}
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize sidebar"
+      >
+        <div className="h-10 w-1 rounded bg-border" />
+      </div>
       <div className="flex flex-1 flex-col">
         <BrowserToolbar
           address={addressValue}
@@ -217,5 +296,5 @@ export const App: React.FC = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
